@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=2" />
+  <link rel="stylesheet" href="style.css?v=3" />
 </head>
 <body>
 
@@ -174,17 +174,20 @@
       <button class="close-btn" data-modal="modal-meal">✕</button>
     </div>
 
-    <!-- VONTADE DE COMER -->
-    <div class="vontade-section">
-      <label class="vontade-label">🍴 Vontade de comer hoje</label>
-      <div class="vontade-dots" id="vontade-dots">
-        <button class="vdot" data-v="1" title="1 — Pouquíssima">●</button>
-        <button class="vdot" data-v="2" title="2 — Pouca">●</button>
-        <button class="vdot" data-v="3" title="3 — Normal">●</button>
-        <button class="vdot" data-v="4" title="4 — Bastante">●</button>
-        <button class="vdot" data-v="5" title="5 — Muita">●</button>
+    <!-- SONO -->
+    <div class="sono-section">
+      <label class="sono-label">🌙 Sono</label>
+      <div class="sono-row">
+        <div class="sono-field">
+          <span>Dormiu</span>
+          <input type="time" id="m-dormiu" />
+        </div>
+        <div class="sono-sep">→</div>
+        <div class="sono-field">
+          <span>Acordou</span>
+          <input type="time" id="m-acordou" />
+        </div>
       </div>
-      <span class="vontade-desc" id="vontade-desc">Toque para marcar</span>
     </div>
 
     <!-- REFEIÇÕES PULADAS -->
@@ -205,6 +208,12 @@
           <strong>Café da Manhã</strong>
           <input type="time" id="m-cafe-hora" />
           <textarea id="m-cafe-desc" placeholder="O que você comeu?"></textarea>
+          <div class="vontade-inline">
+            <span class="vontade-inline-label">Vontade</span>
+            <div class="vdots-inline" data-ref="cafe">
+              <button class="vdot" data-v="1">●</button><button class="vdot" data-v="2">●</button><button class="vdot" data-v="3">●</button><button class="vdot" data-v="4">●</button><button class="vdot" data-v="5">●</button>
+            </div>
+          </div>
         </div>
       </div>
       <div class="meal-block" id="mblock-almoco">
@@ -213,6 +222,12 @@
           <strong>Almoço</strong>
           <input type="time" id="m-almoco-hora" />
           <textarea id="m-almoco-desc" placeholder="O que você comeu?"></textarea>
+          <div class="vontade-inline">
+            <span class="vontade-inline-label">Vontade</span>
+            <div class="vdots-inline" data-ref="almoco">
+              <button class="vdot" data-v="1">●</button><button class="vdot" data-v="2">●</button><button class="vdot" data-v="3">●</button><button class="vdot" data-v="4">●</button><button class="vdot" data-v="5">●</button>
+            </div>
+          </div>
         </div>
       </div>
       <div class="meal-block" id="mblock-jantar">
@@ -221,6 +236,12 @@
           <strong>Jantar</strong>
           <input type="time" id="m-jantar-hora" />
           <textarea id="m-jantar-desc" placeholder="O que você comeu?"></textarea>
+          <div class="vontade-inline">
+            <span class="vontade-inline-label">Vontade</span>
+            <div class="vdots-inline" data-ref="jantar">
+              <button class="vdot" data-v="1">●</button><button class="vdot" data-v="2">●</button><button class="vdot" data-v="3">●</button><button class="vdot" data-v="4">●</button><button class="vdot" data-v="5">●</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -233,6 +254,21 @@
             <button class="btn-add-lanche" id="btn-add-lanche">+ Adicionar</button>
           </div>
           <div id="lanches-lista"></div>
+        </div>
+      </div>
+
+      <!-- HUMOR -->
+      <div class="meal-block">
+        <div class="meal-icon">😊</div>
+        <div class="meal-fields">
+          <strong>Humor do dia</strong>
+          <div class="humor-opts" id="humor-opts">
+            <button class="humor-btn" data-humor="😄">😄<span>Ótimo</span></button>
+            <button class="humor-btn" data-humor="🙂">🙂<span>Bom</span></button>
+            <button class="humor-btn" data-humor="😐">😐<span>Neutro</span></button>
+            <button class="humor-btn" data-humor="😕">😕<span>Ruim</span></button>
+            <button class="humor-btn" data-humor="😞">😞<span>Péssimo</span></button>
+          </div>
         </div>
       </div>
 
@@ -342,6 +378,6 @@
 <!-- TOAST -->
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.js?v=2"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>
