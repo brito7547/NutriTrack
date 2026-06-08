@@ -322,21 +322,40 @@ document.getElementById('btn-save-weight').addEventListener('click', () => {
 
 // ── MEAL MODAL ───────────────────────────
 let currentMealDate = '';
-let currentVontade = 0;
 let puladasAtivas = new Set();
+let currentHumor = '';
 
-const vontadeDescs = ['', 'Pouquíssima vontade', 'Pouca vontade', 'Vontade normal', 'Bastante vontade', 'Muita vontade!'];
+// vontade por refeição: { cafe: 0, almoco: 0, jantar: 0, lanche_N: 0 }
+let vontadesAtivas = {};
 
-function setVontade(v) {
-  currentVontade = v;
-  document.querySelectorAll('.vdot').forEach(dot => {
+const vontadeDescs = ['', 'Pouquíssima', 'Pouca', 'Normal', 'Bastante', 'Muita!'];
+
+function setVontadeRef(ref, v) {
+  vontadesAtivas[ref] = v;
+  const container = document.querySelector(`.vdots-inline[data-ref="${ref}"]`);
+  if (!container) return;
+  container.querySelectorAll('.vdot').forEach(dot => {
     dot.classList.toggle('active', parseInt(dot.dataset.v) <= v);
   });
-  document.getElementById('vontade-desc').textContent = v > 0 ? vontadeDescs[v] : 'Toque para marcar';
 }
 
-document.querySelectorAll('.vdot').forEach(dot => {
-  dot.addEventListener('click', () => setVontade(parseInt(dot.dataset.v)));
+function bindVontadeContainer(container) {
+  const ref = container.dataset.ref;
+  container.querySelectorAll('.vdot').forEach(dot => {
+    dot.addEventListener('click', () => setVontadeRef(ref, parseInt(dot.dataset.v)));
+  });
+}
+
+// Bind static refeição vontade containers
+document.querySelectorAll('.vdots-inline').forEach(c => bindVontadeContainer(c));
+
+// Humor
+document.querySelectorAll('.humor-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentHumor = btn.dataset.humor;
+    document.querySelectorAll('.humor-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
 });
 
 function renderPuladasMotivos() {
@@ -370,18 +389,39 @@ document.querySelectorAll('.pulada-chip').forEach(chip => {
 });
 
 // Lanches dinâmicos
-function addLancheItem(hora = '', desc = '') {
+function addLancheItem(hora = '', desc = '', vontade = 0) {
   const lista = document.getElementById('lanches-lista');
+  const idx = lista.children.length;
+  const ref = 'lanche_' + idx;
+  vontadesAtivas[ref] = vontade;
   const item = document.createElement('div');
   item.className = 'lanche-item';
+  item.dataset.ref = ref;
   item.innerHTML = `
     <div class="lanche-item-fields">
       <input type="time" value="${hora}" placeholder="Horário" />
       <textarea placeholder="O que você comeu?">${desc}</textarea>
+      <div class="vontade-inline">
+        <span class="vontade-inline-label">Vontade</span>
+        <div class="vdots-inline" data-ref="${ref}">
+          <button class="vdot" data-v="1">●</button><button class="vdot" data-v="2">●</button><button class="vdot" data-v="3">●</button><button class="vdot" data-v="4">●</button><button class="vdot" data-v="5">●</button>
+        </div>
+      </div>
     </div>
     <button class="btn-rm-lanche" title="Remover">✕</button>
   `;
-  item.querySelector('.btn-rm-lanche').addEventListener('click', () => item.remove());
+  const vdotsContainer = item.querySelector('.vdots-inline');
+  bindVontadeContainer(vdotsContainer);
+  // Set initial vontade
+  if (vontade > 0) {
+    vdotsContainer.querySelectorAll('.vdot').forEach(dot => {
+      dot.classList.toggle('active', parseInt(dot.dataset.v) <= vontade);
+    });
+  }
+  item.querySelector('.btn-rm-lanche').addEventListener('click', () => {
+    delete vontadesAtivas[ref];
+    item.remove();
+  });
   lista.appendChild(item);
 }
 
@@ -391,7 +431,8 @@ function getLanchesFromDOM() {
   const items = document.querySelectorAll('#lanches-lista .lanche-item');
   return Array.from(items).map(item => ({
     hora: item.querySelector('input[type="time"]').value,
-    desc: item.querySelector('textarea').value
+    desc: item.querySelector('textarea').value,
+    vontade: vontadesAtivas[item.dataset.ref] || 0
   })).filter(l => l.desc.trim());
 }
 
@@ -404,8 +445,9 @@ function openMealForDate(dateStr) {
   document.getElementById('meal-date-label').textContent = fmtDateDisplay(dateStr);
   const reg = appData.registrosAlimentares[dateStr] || {};
 
-  // Vontade
-  setVontade(reg.vontade || 0);
+  // Sono
+  document.getElementById('m-dormiu').value = reg.sono?.dormiu || '';
+  document.getElementById('m-acordou').value = reg.sono?.acordou || '';
 
   // Puladas
   puladasAtivas = new Set(reg.puladas || []);
@@ -413,7 +455,6 @@ function openMealForDate(dateStr) {
     chip.classList.toggle('pulada-ativa', puladasAtivas.has(chip.dataset.refeicao));
   });
   renderPuladasMotivos();
-  // Restore motivos
   if (reg.puladasMotivos) {
     Object.entries(reg.puladasMotivos).forEach(([ref, motivo]) => {
       const el = document.getElementById('pulada-motivo-' + ref);
@@ -431,11 +472,21 @@ function openMealForDate(dateStr) {
   document.getElementById('m-jantar-desc').value = reg.jantar?.desc || '';
   document.getElementById('m-obs').value = reg.obs || '';
 
+  // Vontades por refeição
+  vontadesAtivas = Object.assign({ cafe: 0, almoco: 0, jantar: 0 }, reg.vontades || {});
+  ['cafe','almoco','jantar'].forEach(ref => setVontadeRef(ref, vontadesAtivas[ref] || 0));
+
+  // Humor
+  currentHumor = reg.humor || '';
+  document.querySelectorAll('.humor-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.humor === currentHumor);
+  });
+
   // Lanches
   document.getElementById('lanches-lista').innerHTML = '';
   const lanches = reg.lanches || [];
   if (lanches.length > 0) {
-    lanches.forEach(l => addLancheItem(l.hora, l.desc));
+    lanches.forEach(l => addLancheItem(l.hora, l.desc, l.vontade || 0));
   }
 
   openModal('modal-meal');
@@ -449,7 +500,12 @@ document.getElementById('btn-save-meal').addEventListener('click', () => {
   });
 
   appData.registrosAlimentares[currentMealDate] = {
-    vontade: currentVontade,
+    sono: {
+      dormiu: document.getElementById('m-dormiu').value,
+      acordou: document.getElementById('m-acordou').value
+    },
+    humor: currentHumor,
+    vontades: Object.assign({}, vontadesAtivas),
     puladas: Array.from(puladasAtivas),
     puladasMotivos,
     cafe: { hora: document.getElementById('m-cafe-hora').value, desc: document.getElementById('m-cafe-desc').value },
@@ -590,8 +646,7 @@ function generateReport(fromDate, toDate) {
   let pesosRel = pesos;
   if (fromDate) pesosRel = pesos.filter(p => p.data >= fromDate && p.data <= toDate);
 
-  const vLabels = ['', '😞 Pouquíssima', '😕 Pouca', '😐 Normal', '🙂 Bastante', '😄 Muita'];
-  const refeicaoNome = { cafe: 'Café da Manhã', almoco: 'Almoço', jantar: 'Jantar' };
+  const vLabels = ['', '😞 Pouquíssima', '😕 Pouca', '😐 Normal', '🙂 Bastante', '😄 Muita'];  const refeicaoNome = { cafe: 'Café da Manhã', almoco: 'Almoço', jantar: 'Jantar' };
 
   let html = `<!DOCTYPE html><html lang="pt-BR"><head>
 <meta charset="UTF-8"/>
@@ -670,24 +725,26 @@ function generateReport(fromDate, toDate) {
       const r = regs[dateStr];
       const puladas = r.puladas || [];
       html += `<div class="dia-header"><h3>${fmtDateLong(dateStr)}</h3>`;
-      if (r.vontade) html += `<div class="vontade">🍴 Vontade de comer: ${vLabels[r.vontade]}</div>`;
+      if (r.humor) html += `<div class="vontade">Humor: ${r.humor}</div>`;
+      if (r.sono?.dormiu || r.sono?.acordou) html += `<div class="vontade">🌙 Sono: dormiu ${r.sono.dormiu || '?'} / acordou ${r.sono.acordou || '?'}</div>`;
       html += `</div>`;
 
       ['cafe','almoco','jantar'].forEach(ref => {
         const nome = refeicaoNome[ref];
         const icons = { cafe: '☕', almoco: '🌞', jantar: '🌙' };
+        const vontade = r.vontades?.[ref];
         if (puladas.includes(ref)) {
           const motivo = r.puladasMotivos?.[ref];
           html += `<div class="pulada">⏭ ${nome} pulado${motivo ? ` — ${motivo}` : ''}</div>`;
         } else if (r[ref]?.desc?.trim()) {
-          html += `<div class="refeicao"><span class="ref-nome">${icons[ref]} ${nome}</span><span class="ref-hora">${r[ref].hora || ''}</span><p class="ref-desc">${r[ref].desc}</p></div>`;
+          html += `<div class="refeicao"><span class="ref-nome">${icons[ref]} ${nome}</span><span class="ref-hora">${r[ref].hora || ''}</span>${vontade ? `<span class="ref-hora"> · Vontade: ${vLabels[vontade]}</span>` : ''}<p class="ref-desc">${r[ref].desc}</p></div>`;
         }
       });
 
       if (r.lanches && r.lanches.length > 0) {
         r.lanches.forEach(l => {
           if (l.desc?.trim()) {
-            html += `<div class="refeicao"><span class="ref-nome">🍎 Lanche</span><span class="ref-hora">${l.hora || ''}</span><p class="ref-desc">${l.desc}</p></div>`;
+            html += `<div class="refeicao"><span class="ref-nome">🍎 Lanche</span><span class="ref-hora">${l.hora || ''}</span>${l.vontade ? `<span class="ref-hora"> · Vontade: ${vLabels[l.vontade]}</span>` : ''}<p class="ref-desc">${l.desc}</p></div>`;
           }
         });
       }
