@@ -1,5 +1,5 @@
 // NutriTrack Service Worker v3 — cache bust
-const CACHE_NAME = 'nutritrack-v4';
+const CACHE_NAME = 'nutritrack-v5';
 
 // On install, skip waiting immediately — don't pre-cache
 self.addEventListener('install', () => self.skipWaiting());
@@ -24,3 +24,4 @@ self.addEventListener('fetch', e => {
     }).catch(() => caches.match(e.request))
   );
 });
+  
