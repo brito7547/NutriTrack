@@ -317,7 +317,89 @@ document.getElementById('btn-save-weight').addEventListener('click', () => {
   showToast('Peso registrado!', 'success');
 });
 
-// ── MEAL MODAL ───────────────────────────
+// ── SONO — cálculo de duração ─────────────
+function calcSonoDuracao(dormiu, acordou) {
+  if (!dormiu || !acordou) return '';
+  const [dh, dm] = dormiu.split(':').map(Number);
+  const [ah, am] = acordou.split(':').map(Number);
+  let mins = (ah * 60 + am) - (dh * 60 + dm);
+  if (mins <= 0) mins += 24 * 60; // dormiu depois da meia-noite
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${h}h ${m}min` : `${h}h`;
+}
+
+function updateSonoDuracao() {
+  const dormiu = document.getElementById('m-dormiu').value;
+  const acordou = document.getElementById('m-acordou').value;
+  const el = document.getElementById('sono-duracao');
+  const dur = calcSonoDuracao(dormiu, acordou);
+  el.textContent = dur ? `😴 ${dur}` : '';
+}
+
+document.getElementById('m-dormiu').addEventListener('change', updateSonoDuracao);
+document.getElementById('m-acordou').addEventListener('change', updateSonoDuracao);
+
+// ── SUGESTÕES ─────────────────────────────
+let sugRef = '';
+let sugTargetId = '';
+
+function getSugestoesLanche() {
+  const regs = appData.registrosAlimentares;
+  const contagem = {};
+  Object.values(regs).forEach(reg => {
+    (reg.lanches || []).forEach(l => {
+      const desc = l.desc?.trim();
+      if (!desc) return;
+      contagem[desc] = (contagem[desc] || 0) + 1;
+    });
+  });
+  return Object.entries(contagem).sort((a, b) => b[1] - a[1]).slice(0, 8);
+}
+
+function getSugestoes(ref) {
+  const regs = appData.registrosAlimentares;
+  const contagem = {};
+  Object.values(regs).forEach(reg => {
+    if (!reg[ref]) return;
+    const desc = reg[ref].desc?.trim();
+    if (!desc) return;
+    contagem[desc] = (contagem[desc] || 0) + 1;
+  });
+  // Sort by frequency
+  return Object.entries(contagem)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8);
+}
+
+function openSugestoes(ref, targetId) {
+  sugRef = ref;
+  sugTargetId = targetId;
+  const lista = document.getElementById('sug-lista');
+  const sugs = getSugestoes(ref);
+  lista.innerHTML = '';
+  if (!sugs.length) {
+    lista.innerHTML = '<p class="sug-empty">Nenhum registro anterior encontrado.</p>';
+  } else {
+    sugs.forEach(([texto, count]) => {
+      const item = document.createElement('div');
+      item.className = 'sug-item';
+      item.innerHTML = `<span class="sug-text">${texto}</span><span class="sug-count">${count}x</span>`;
+      item.addEventListener('click', () => {
+        document.getElementById(targetId).value = texto;
+        closeModal('modal-sugestoes');
+      });
+      lista.appendChild(item);
+    });
+  }
+  openModal('modal-sugestoes');
+}
+
+document.querySelectorAll('.btn-sugestao').forEach(btn => {
+  const ref = btn.dataset.ref;
+  const targetId = `m-${ref}-desc`;
+  btn.addEventListener('click', () => openSugestoes(ref, targetId));
+});
 let currentMealDate = '';
 let puladasAtivas = new Set();
 let currentHumor = '';
@@ -397,7 +479,10 @@ function addLancheItem(hora = '', desc = '', vontade = 0) {
   item.innerHTML = `
     <div class="lanche-item-fields">
       <input type="time" value="${hora}" placeholder="Horário" />
-      <textarea placeholder="O que você comeu?">${desc}</textarea>
+      <div class="desc-wrap">
+        <textarea placeholder="O que você comeu?">${desc}</textarea>
+        <button class="btn-sugestao-lanche" title="Sugestões">💡</button>
+      </div>
       <div class="vontade-inline">
         <span class="vontade-inline-label">Vontade</span>
         <div class="vdots-inline" data-ref="${ref}">
@@ -409,12 +494,37 @@ function addLancheItem(hora = '', desc = '', vontade = 0) {
   `;
   const vdotsContainer = item.querySelector('.vdots-inline');
   bindVontadeContainer(vdotsContainer);
-  // Set initial vontade
   if (vontade > 0) {
     vdotsContainer.querySelectorAll('.vdot').forEach(dot => {
       dot.classList.toggle('active', parseInt(dot.dataset.v) <= vontade);
     });
   }
+  item.querySelector('.btn-sugestao-lanche').addEventListener('click', () => {
+    const textarea = item.querySelector('textarea');
+    openSugestoes('lanche', null);
+    // Override click handler to target this specific textarea
+    document.querySelectorAll('#sug-lista .sug-item').forEach(si => {
+      si.replaceWith(si.cloneNode(true));
+    });
+    // Re-render with custom target
+    const lista = document.getElementById('sug-lista');
+    const sugs = getSugestoesLanche();
+    lista.innerHTML = '';
+    if (!sugs.length) {
+      lista.innerHTML = '<p class="sug-empty">Nenhum lanche registrado anteriormente.</p>';
+    } else {
+      sugs.forEach(([texto, count]) => {
+        const sitem = document.createElement('div');
+        sitem.className = 'sug-item';
+        sitem.innerHTML = `<span class="sug-text">${texto}</span><span class="sug-count">${count}x</span>`;
+        sitem.addEventListener('click', () => {
+          textarea.value = texto;
+          closeModal('modal-sugestoes');
+        });
+        lista.appendChild(sitem);
+      });
+    }
+  });
   item.querySelector('.btn-rm-lanche').addEventListener('click', () => {
     delete vontadesAtivas[ref];
     item.remove();
@@ -445,6 +555,7 @@ function openMealForDate(dateStr) {
   // Sono
   document.getElementById('m-dormiu').value = reg.sono?.dormiu || '';
   document.getElementById('m-acordou').value = reg.sono?.acordou || '';
+  updateSonoDuracao();
 
   // Puladas
   puladasAtivas = new Set(reg.puladas || []);
