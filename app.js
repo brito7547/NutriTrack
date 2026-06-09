@@ -92,13 +92,10 @@ function getMealColor(registro) {
   const puladas = registro.puladas || [];
   const { cafe, almoco, jantar, lanches } = registro;
 
-  const cafePulado = puladas.includes('cafe');
-  const almocoPulado = puladas.includes('almoco');
-  const jantarPulado = puladas.includes('jantar');
-
-  const hasCafe = cafePulado || (cafe && cafe.desc && cafe.desc.trim());
-  const hasAlmoco = almocoPulado || (almoco && almoco.desc && almoco.desc.trim());
-  const hasJantar = jantarPulado || (jantar && jantar.desc && jantar.desc.trim());
+  // Pulada = não comeu, só conta se tiver desc preenchida
+  const hasCafe = !puladas.includes('cafe') && cafe && cafe.desc && cafe.desc.trim();
+  const hasAlmoco = !puladas.includes('almoco') && almoco && almoco.desc && almoco.desc.trim();
+  const hasJantar = !puladas.includes('jantar') && jantar && jantar.desc && jantar.desc.trim();
   const hasLanche = lanches && lanches.some(l => l.desc && l.desc.trim());
 
   const count = [hasCafe, hasAlmoco, hasJantar].filter(Boolean).length;
