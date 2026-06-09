@@ -1,14 +1,26 @@
-// NutriTrack Service Worker v3 — cache bust
-const CACHE_NAME = 'nutritrack-v5';
+const CACHE_NAME = 'nutritrack-v6';
+const BASE = '/NutriTrack/';
+const ASSETS = [
+  BASE,
+  BASE + 'index.html',
+  BASE + 'style.css',
+  BASE + 'app.js',
+  BASE + 'manifest.json',
+  BASE + 'icon-192.png',
+  BASE + 'icon-512.png'
+];
 
-// On install, skip waiting immediately — don't pre-cache
-self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+  );
+  self.skipWaiting();
+});
 
-// On activate, delete ALL old caches and claim clients
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
 });
@@ -21,6 +33,10 @@ self.addEventListener('fetch', e => {
       const clone = res.clone();
       caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
       return res;
-    }).catch(() => caches.match(e.request))
+    }).catch(() => caches.match(e.request).then(cached => {
+      // If no match, return the main page (handles navigation)
+      return cached || caches.match(BASE + 'index.html');
+    }))
   );
 });
+                      
